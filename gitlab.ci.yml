@@ -1,0 +1,50 @@
+image: registry.gitlab.com/<USERNAME>/laravel-sample:latest
+
+services:
+- mysql:5.7
+
+variables:
+  MYSQL_DATABASE: homestead
+  MYSQL_ROOT_PASSWORD: secret
+  DB_HOST: mysql
+  DB_USERNAME: root
+
+stages:
+- test
+- build
+- deploy
+
+test:
+  stage: test
+  script: echo "开始测试"
+
+build:
+  stage: build
+  script:
+  - echo "开始编译依赖优化"
+#  - cp .env.example .env
+#  - composer install
+#  - php artisan key:generate
+#  - php artisan migrate
+#  - vendor/bin/phpunit
+deploy_staging:
+  stage: deploy
+  script:
+  - echo "发布最终代码到环境"
+  # Add the private SSH key to the build environment
+  - 'which ssh-agent || ( apt-get update -y && apt-get install openssh-client -y )'
+  - eval $(ssh-agent -s)
+  - ssh-add <(echo "$SSH_PRIVATE_KEY")
+  - mkdir -p ~/.ssh
+  - '[[ -f /.dockerenv ]] && echo -e "Host *\n\tStrictHostKeyChecking no\n\n" > ~/.ssh/config'
+
+  # Run Envoy
+  - ~/.composer/vendor/bin/envoy run deploy
+
+  environment:
+    name: production
+    url: http://192.168.1.1
+  when: manual
+  only:
+  - master
+
